@@ -1,6 +1,9 @@
 var overlay = null,
     frame = null
 
+var previousCardIndex = -1
+var previousCardData = null
+
 window.__PREVYOU_LOADED = true
 
 // Event send by the inner `<object>` script
@@ -55,6 +58,34 @@ function hidePopup() {
     frame = null
 }
 
+function updateVideoCard(target, data) {
+    let previousData = {}
+
+    const thumbnail = target.querySelector('.ytd-thumbnail > img')
+    previousData['thumbnail'] = thumbnail.src
+    thumbnail.src = data.thumbnail
+
+    // Finally, set the channel's thumbnail in the preview
+    let avatar = target.querySelector('.yt-spec-avatar-shape img')
+    if (avatar) {
+        previousData['avatar'] = avatar.src
+        avatar.src = data.avatar
+    }
+
+    const title = target.querySelector('#video-title')
+    previousData['title'] = title.textContent
+    title.textContent = data.title
+
+    let channelName = target.querySelector('.ytd-channel-name a')
+    if (!channelName) {
+        channelName = target.querySelector('.ytd-channel-name')
+    }
+    previousData['channel']
+    channelName.textContent = data.channel
+
+    return previousData
+}
+
 function findCard() {
     // Select a random a card in between a range
     let cardPositionIndex = 0
@@ -69,6 +100,11 @@ function findCard() {
         cards = activeScreen.getElementsByTagName('ytd-compact-video-renderer')
     }
 
+    if (previousCardIndex > -1) {
+        updateVideoCard(cards[previousCardIndex], previousCardData)
+        previousCardData = null
+    }
+
     chrome.storage.local.get('thumbnailProperties', (result) => {
 
         if (result.thumbnailProperties.shuffle) {
@@ -76,18 +112,8 @@ function findCard() {
             const max = 12
             cardPositionIndex = Math.floor(Math.random() * (max - min + 1)) + min
         }
+        previousCardIndex = cardPositionIndex
         let target = cards[cardPositionIndex]
-        const thumbnail = target.querySelector('.ytd-thumbnail > img')
-        thumbnail.src = result.thumbnailProperties.thumbnail
-
-        const title = target.querySelector('#video-title')
-        let channelName = target.querySelector('.ytd-channel-name a')
-        if (!channelName) {
-            channelName = target.querySelector('.ytd-channel-name')
-        }
-
-        title.textContent = result.thumbnailProperties.title
-        channelName.textContent = result.thumbnailProperties.channelName
 
         // Channel's thumbnail management
         let channelThumbnailFromExtension = result.thumbnailProperties.channelThumbnail
@@ -102,11 +128,12 @@ function findCard() {
             channelThumbnailValue = channelThumbnailFromYoutube.src
         }
 
-        // Finally, set the channel's thumbnail in the preview
-        let avatar = target.querySelector('#avatar-link .yt-img-shadow')
-        if (avatar) {
-            avatar.src = channelThumbnailValue
-        }
+        previousCardData = updateVideoCard(target, {
+            thumbnail: result.thumbnailProperties.thumbnail,
+            avatar: channelThumbnailValue,
+            title: result.thumbnailProperties.title,
+            channel: result.thumbnailProperties.channelName
+        })
 
         highlightTarget(target)
 
