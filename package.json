@@ -19,6 +19,6 @@
   },
   "homepage": "https://github.com/bdebon/youtube-thumbnail-tester-chrome-extension#readme",
   "devDependencies": {
-    "eslint": "^7.23.0"
+    "eslint": "^9.15.0"
   }
 }
